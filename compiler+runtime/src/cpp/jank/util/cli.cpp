@@ -71,6 +71,7 @@ namespace jank::util::cli
 
     /* C++ REPL subcommand. */
     auto &cli_cpp_repl(*cli.add_subcommand("cpp-repl", "Start up a terminal C++ REPL."));
+    auto &cli_cpp_nrepl(*cli.add_subcommand("nrepl", "Start up a terminal nREPL."));
 
     /* Run subcommand. */
     auto &cli_run_main(*cli.add_subcommand("run-main", "Load and execute -main."));
@@ -110,6 +111,10 @@ namespace jank::util::cli
     else if(cli.got_subcommand(&cli_cpp_repl))
     {
       opts.command = command::cpp_repl;
+    }
+    else if(cli.got_subcommand(&cli_cpp_nrepl))
+    {
+      opts.command = command::nrepl;
     }
     else if(cli.got_subcommand(&cli_run_main))
     {

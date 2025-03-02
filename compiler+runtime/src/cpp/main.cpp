@@ -114,6 +114,11 @@ namespace jank
     __rt_ctx->compile_module(opts.target_ns).expect_ok();
   }
 
+  static void nrepl(util::cli::options const &opts)
+  {
+    fmt::println("Here nREPL will reside");
+  }
+
   static void repl(util::cli::options const &opts)
   {
     using namespace jank;
@@ -335,6 +340,9 @@ try
       break;
     case util::cli::command::run_main:
       run_main(opts);
+      break;
+    case util::cli::command::nrepl:
+      nrepl(opts);
       break;
   }
 }
