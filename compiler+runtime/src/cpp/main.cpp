@@ -33,6 +33,7 @@
 #include <jank/perf_native.hpp>
 #include <clojure/core_native.hpp>
 #include <clojure/string_native.hpp>
+#include <nrepl/bencode.h>
 
 namespace jank
 {
@@ -117,6 +118,8 @@ namespace jank
   static void nrepl(util::cli::options const &opts)
   {
     fmt::println("Here nREPL will reside");
+    printBencode(convertBencodeType(42));
+    printBencode(convertBencodeType("Hello, World!"));
   }
 
   static void repl(util::cli::options const &opts)
