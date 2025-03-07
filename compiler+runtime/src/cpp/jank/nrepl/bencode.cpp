@@ -7,19 +7,8 @@
 #include <memory>
 #include <stdexcept>
 #include <cassert>
-#include "bencode.h"
+#include <jank/nrepl/bencode.hpp>
 
-struct BencodeValue;
-using BencodeValuePtr = std::shared_ptr<BencodeValue>;
-
-struct BencodeValue
-  : std::variant<std::string,
-                 int,
-                 std::vector<BencodeValuePtr>,
-                 std::map<std::string, BencodeValuePtr>>
-{
-  using variant::variant;
-};
 
 void writeBencode(BencodeValuePtr const &value, std::ostream &output);
 BencodeValuePtr readBencode(std::istream &input);

@@ -33,7 +33,7 @@
 #include <jank/perf_native.hpp>
 #include <clojure/core_native.hpp>
 #include <clojure/string_native.hpp>
-#include <nrepl/bencode.h>
+#include <jank/nrepl/bencode.hpp>
 
 namespace jank
 {
