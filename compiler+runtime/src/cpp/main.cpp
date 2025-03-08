@@ -33,7 +33,9 @@
 #include <jank/perf_native.hpp>
 #include <clojure/core_native.hpp>
 #include <clojure/string_native.hpp>
+
 #include <jank/nrepl/bencode.hpp>
+#include <jank/nrepl/server.hpp>
 
 namespace jank
 {
@@ -120,6 +122,37 @@ namespace jank
     fmt::println("Here nREPL will reside");
     printBencode(convertBencodeType(42));
     printBencode(convertBencodeType("Hello, World!"));
+    try
+    {
+      int port = 12345;
+
+      boost::asio::io_context io_context;
+
+      auto handler = [](std::istream &input, std::ostream &output) {
+        BencodeValuePtr decoded = readBencode(input);
+
+        if(std::holds_alternative<std::string>(*decoded))
+        {
+          std::string message = std::get<std::string>(*decoded);
+          message += " certified by server";
+
+          BencodeValuePtr encoded = std::make_shared<BencodeValue>(message);
+          writeBencode(encoded, output);
+        }
+        else
+        {
+          std::cerr << "Received non-string bencoded value" << std::endl;
+        }
+      };
+
+      server s(io_context, port, handler);
+
+      io_context.run();
+    }
+    catch(std::exception &e)
+    {
+      std::cerr << "Exception: " << e.what() << "\n";
+    }
   }
 
   static void repl(util::cli::options const &opts)
