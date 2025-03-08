@@ -117,6 +117,53 @@ namespace jank
     __rt_ctx->compile_module(opts.target_ns).expect_ok();
   }
 
+  std::string evaluate_code(std::string const &line, boost::filesystem::path const &path)
+  {
+    using namespace jank;
+    using namespace jank::runtime;
+
+    native_transient_string input{};
+
+    if(line.ends_with("\\"))
+    {
+      input.append(line.substr(0, line.size() - 1));
+      input.append("\n");
+    }
+    else
+    {
+      input += line;
+    }
+
+    util::scope_exit const finally{ [&] { boost::filesystem::remove(path); } };
+    try
+    {
+      {
+        std::ofstream ofs{ path.string() };
+        ofs << input;
+      }
+
+      auto const res(__rt_ctx->eval_file(path.c_str()));
+      return runtime::to_code_string(res);
+    }
+    catch(std::exception const &e)
+    {
+      return fmt::format("Exception: {}", e.what());
+    }
+    catch(jank::runtime::object_ptr const o)
+    {
+      return fmt::format("Exception: {}", jank::runtime::to_code_string(o));
+    }
+    catch(jank::native_persistent_string const &s)
+    {
+      return fmt::format("Exception: {}", s);
+    }
+    catch(jank::error_ptr const &e)
+    {
+      jank::error::report(e);
+      return "An error occurred";
+    }
+  }
+
   static void nrepl(util::cli::options const &opts)
   {
     using namespace jank;
@@ -141,68 +188,19 @@ namespace jank
       int port = 12345;
       boost::asio::io_context io_context;
 
-      auto handler = [](std::istream &input, std::ostream &output) {
+      auto const tmp{ boost::filesystem::temp_directory_path() };
+      auto const path{ tmp / boost::filesystem::unique_path("jank-repl-%%%%.jank") };
+
+      auto handler = [path](std::istream &input, std::ostream &output) {
         BencodeValuePtr decoded = readBencode(input);
 
         if(std::holds_alternative<std::string>(*decoded))
         {
           std::string line = std::get<std::string>(*decoded);
           boost::trim(line);
-
-          native_transient_string input{};
-
-          if(line.ends_with("\\"))
-          {
-            input.append(line.substr(0, line.size() - 1));
-            input.append("\n");
-          }
-          else
-          {
-            input += line;
-          }
-
-          auto const tmp{ boost::filesystem::temp_directory_path() };
-          auto const path{ tmp / boost::filesystem::unique_path("jank-repl-%%%%.jank") };
-
-          util::scope_exit const finally{ [&] { boost::filesystem::remove(path); } };
-          try
-          {
-            {
-              std::ofstream ofs{ path.string() };
-              ofs << input;
-            }
-
-            auto const res(__rt_ctx->eval_file(path.c_str()));
-            std::string result = runtime::to_code_string(res);
-            BencodeValuePtr encoded = std::make_shared<BencodeValue>(result);
-            writeBencode(encoded, output);
-          }
-          catch(std::exception const &e)
-          {
-            std::string error_message = fmt::format("Exception: {}", e.what());
-            BencodeValuePtr encoded = std::make_shared<BencodeValue>(error_message);
-            writeBencode(encoded, output);
-          }
-          catch(jank::runtime::object_ptr const o)
-          {
-            std::string error_message
-              = fmt::format("Exception: {}", jank::runtime::to_code_string(o));
-            BencodeValuePtr encoded = std::make_shared<BencodeValue>(error_message);
-            writeBencode(encoded, output);
-          }
-          catch(jank::native_persistent_string const &s)
-          {
-            std::string error_message = fmt::format("Exception: {}", s);
-            BencodeValuePtr encoded = std::make_shared<BencodeValue>(error_message);
-            writeBencode(encoded, output);
-          }
-          catch(jank::error_ptr const &e)
-          {
-            jank::error::report(e);
-            std::string error_message = "An error occurred";
-            BencodeValuePtr encoded = std::make_shared<BencodeValue>(error_message);
-            writeBencode(encoded, output);
-          }
+          std::string result = evaluate_code(line, path);
+          BencodeValuePtr encoded = std::make_shared<BencodeValue>(result);
+          writeBencode(encoded, output);
         }
         else
         {
