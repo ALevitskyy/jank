@@ -270,6 +270,7 @@ add_library(
   # NREPL sources.
   src/cpp/jank/nrepl/bencode.cpp
   src/cpp/jank/nrepl/server.cpp
+  src/cpp/jank/nrepl/logic.cpp
 )
 
 target_include_directories(

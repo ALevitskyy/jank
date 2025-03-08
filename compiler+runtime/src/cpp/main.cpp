@@ -36,6 +36,7 @@
 
 #include <jank/nrepl/bencode.hpp>
 #include <jank/nrepl/server.hpp>
+#include <jank/nrepl/logic.hpp>
 
 namespace jank
 {
@@ -191,24 +192,9 @@ namespace jank
       auto const tmp{ boost::filesystem::temp_directory_path() };
       auto const path{ tmp / boost::filesystem::unique_path("jank-repl-%%%%.jank") };
 
-      auto handler = [path](std::istream &input, std::ostream &output) {
-        BencodeValuePtr decoded = readBencode(input);
-
-        if(std::holds_alternative<std::string>(*decoded))
-        {
-          std::string line = std::get<std::string>(*decoded);
-          boost::trim(line);
-          std::string result = evaluate_code(line, path);
-          BencodeValuePtr encoded = std::make_shared<BencodeValue>(result);
-          writeBencode(encoded, output);
-        }
-        else
-        {
-          std::cerr << "Received non-string bencoded value" << std::endl;
-        }
-      };
-
-      server s(io_context, port, handler);
+      server s(io_context,
+               port,
+               std::bind(handler, std::placeholders::_1, std::placeholders::_2, path));
       io_context.run();
     }
     catch(std::exception &e)
