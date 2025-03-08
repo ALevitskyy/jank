@@ -117,7 +117,7 @@ namespace jank
     __rt_ctx->compile_module(opts.target_ns).expect_ok();
   }
 
-  static void nrepl(util::cli::options const &opts)
+  static void nrepl_old(util::cli::options const &opts)
   {
     fmt::println("Here nREPL will reside");
     printBencode(convertBencodeType(42));
@@ -147,6 +147,108 @@ namespace jank
 
       server s(io_context, port, handler);
 
+      io_context.run();
+    }
+    catch(std::exception &e)
+    {
+      std::cerr << "Exception: " << e.what() << "\n";
+    }
+  }
+
+  static void nrepl(util::cli::options const &opts)
+  {
+    using namespace jank;
+    using namespace jank::runtime;
+
+    fmt::println("Here nREPL will reside");
+
+    {
+      profile::timer const timer{ "require clojure.core" };
+      __rt_ctx->load_module("/clojure.core", module::origin::latest).expect_ok();
+    }
+
+    if(!opts.target_module.empty())
+    {
+      profile::timer const timer{ "load main" };
+      __rt_ctx->load_module("/" + opts.target_module, module::origin::latest).expect_ok();
+      dynamic_call(__rt_ctx->in_ns_var->deref(), make_box<obj::symbol>(opts.target_module));
+    }
+
+    try
+    {
+      int port = 12345;
+      boost::asio::io_context io_context;
+
+      auto handler = [](std::istream &input, std::ostream &output) {
+        BencodeValuePtr decoded = readBencode(input);
+
+        if(std::holds_alternative<std::string>(*decoded))
+        {
+          std::string line = std::get<std::string>(*decoded);
+          boost::trim(line);
+
+          native_transient_string input{};
+
+          if(line.ends_with("\\"))
+          {
+            input.append(line.substr(0, line.size() - 1));
+            input.append("\n");
+          }
+          else
+          {
+            input += line;
+          }
+
+          auto const tmp{ boost::filesystem::temp_directory_path() };
+          auto const path{ tmp / boost::filesystem::unique_path("jank-repl-%%%%.jank") };
+
+          util::scope_exit const finally{ [&] { boost::filesystem::remove(path); } };
+          try
+          {
+            {
+              std::ofstream ofs{ path.string() };
+              ofs << input;
+            }
+
+            auto const res(__rt_ctx->eval_file(path.c_str()));
+            std::string result = runtime::to_code_string(res);
+            BencodeValuePtr encoded = std::make_shared<BencodeValue>(result);
+            writeBencode(encoded, output);
+          }
+          catch(std::exception const &e)
+          {
+            std::string error_message = fmt::format("Exception: {}", e.what());
+            BencodeValuePtr encoded = std::make_shared<BencodeValue>(error_message);
+            writeBencode(encoded, output);
+          }
+          catch(jank::runtime::object_ptr const o)
+          {
+            std::string error_message
+              = fmt::format("Exception: {}", jank::runtime::to_code_string(o));
+            BencodeValuePtr encoded = std::make_shared<BencodeValue>(error_message);
+            writeBencode(encoded, output);
+          }
+          catch(jank::native_persistent_string const &s)
+          {
+            std::string error_message = fmt::format("Exception: {}", s);
+            BencodeValuePtr encoded = std::make_shared<BencodeValue>(error_message);
+            writeBencode(encoded, output);
+          }
+          catch(jank::error_ptr const &e)
+          {
+            jank::error::report(e);
+            std::string error_message = "An error occurred";
+            BencodeValuePtr encoded = std::make_shared<BencodeValue>(error_message);
+            writeBencode(encoded, output);
+          }
+        }
+        else
+        {
+          std::cerr << "Received non-string bencoded value" << std::endl;
+        }
+      };
+
+      server s(io_context, port, handler);
       io_context.run();
     }
     catch(std::exception &e)
