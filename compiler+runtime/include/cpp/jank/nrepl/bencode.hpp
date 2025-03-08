@@ -34,5 +34,7 @@ BencodeValuePtr convertBencodeType(T const &value)
   return std::make_shared<BencodeValue>(value);
 }
 
+void printReadableBencode(BencodeValuePtr const &value, std::ostream &output, int indent = 0);
+
 
 #endif // BENCODE_H

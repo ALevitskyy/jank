@@ -160,3 +160,34 @@ void testBencode()
   }
   std::cout << "All tests passed!" << std::endl;
 }
+
+void printReadableBencode(BencodeValuePtr const &value, std::ostream &output, int indent)
+{
+  std::string indentStr(indent, ' ');
+
+  if(std::holds_alternative<std::string>(*value))
+  {
+    output << indentStr << "String: " << std::get<std::string>(*value) << "\n";
+  }
+  else if(std::holds_alternative<int>(*value))
+  {
+    output << indentStr << "Integer: " << std::get<int>(*value) << "\n";
+  }
+  else if(std::holds_alternative<std::vector<BencodeValuePtr>>(*value))
+  {
+    output << indentStr << "List:\n";
+    for(auto const &item : std::get<std::vector<BencodeValuePtr>>(*value))
+    {
+      printReadableBencode(item, output, indent + 2);
+    }
+  }
+  else if(std::holds_alternative<std::map<std::string, BencodeValuePtr>>(*value))
+  {
+    output << indentStr << "Dictionary:\n";
+    for(auto const &[key, val] : std::get<std::map<std::string, BencodeValuePtr>>(*value))
+    {
+      output << indentStr << "  Key: " << key << "\n";
+      printReadableBencode(val, output, indent + 2);
+    }
+  }
+}

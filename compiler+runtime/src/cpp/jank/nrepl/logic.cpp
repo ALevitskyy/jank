@@ -16,6 +16,12 @@ namespace jank
   {
     BencodeValuePtr decoded = readBencode(input);
 
+    std::cout << "Recieved payload: ";
+    printReadableBencode(decoded, std::cout);
+    std::cout << "\n";
+    std::cout << "\n";
+    std::cout << "\n";
+
     if(std::holds_alternative<std::map<std::string, BencodeValuePtr>>(*decoded))
     {
       auto const &map = std::get<std::map<std::string, BencodeValuePtr>>(*decoded);
