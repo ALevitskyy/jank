@@ -55,7 +55,8 @@ namespace jank
             response["id"] = std::make_shared<BencodeValue>(id);
             response["value"] = std::make_shared<BencodeValue>(result);
             response["session"] = std::make_shared<BencodeValue>(session);
-            response["ns"] = std::make_shared<BencodeValue>("clojure.core");
+            response["ns"] = std::make_shared<BencodeValue>("user");
+
 
             BencodeValuePtr encoded = std::make_shared<BencodeValue>(response);
 
@@ -66,6 +67,18 @@ namespace jank
             std::cout << "\n";
 
             writeBencode(encoded, output);
+
+
+            std::map<std::string, BencodeValuePtr> follow_up_response;
+            follow_up_response["id"] = std::make_shared<BencodeValue>(id);
+            follow_up_response["session"] = std::make_shared<BencodeValue>(session);
+            follow_up_response["status"] = std::make_shared<BencodeValue>(
+              std::vector<BencodeValuePtr>{ std::make_shared<BencodeValue>("done") });
+
+            BencodeValuePtr follow_up_encoded = std::make_shared<BencodeValue>(follow_up_response);
+
+
+            writeBencode(follow_up_encoded, output);
           }
           else
           {

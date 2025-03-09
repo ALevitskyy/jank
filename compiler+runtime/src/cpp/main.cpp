@@ -172,6 +172,7 @@ namespace jank
 
     fmt::println("Here nREPL will reside");
 
+
     {
       profile::timer const timer{ "require clojure.core" };
       __rt_ctx->load_module("/clojure.core", module::origin::latest).expect_ok();
@@ -191,6 +192,8 @@ namespace jank
 
       auto const tmp{ boost::filesystem::temp_directory_path() };
       auto const path{ tmp / boost::filesystem::unique_path("jank-repl-%%%%.jank") };
+
+      evaluate_code("(ns user)", path);
 
       server s(io_context,
                port,
