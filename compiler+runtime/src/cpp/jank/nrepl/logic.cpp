@@ -110,6 +110,94 @@ namespace jank
     writeBencode(encoded, output);
   }
 
+  void handle_clojuredocs_refresh_cache(std::map<std::string, BencodeValuePtr> const &map,
+                                        std::ostream &output)
+  {
+    auto id_it = map.find("id");
+    std::string id = "unknown";
+    if(id_it != map.end() && std::holds_alternative<std::string>(*id_it->second))
+    {
+      id = std::get<std::string>(*id_it->second);
+    }
+
+    std::string session = session_ids.empty() ? "unknown" : session_ids.back();
+
+    std::map<std::string, BencodeValuePtr> response;
+    response["id"] = std::make_shared<BencodeValue>(id);
+    response["session"] = std::make_shared<BencodeValue>(session);
+    response["status"] = std::make_shared<BencodeValue>(
+      std::vector<BencodeValuePtr>{ std::make_shared<BencodeValue>("done"),
+                                    std::make_shared<BencodeValue>("ok") });
+
+    BencodeValuePtr encoded = std::make_shared<BencodeValue>(response);
+
+    std::cout << "Sending back: ";
+    printReadableBencode(encoded, std::cout);
+    std::cout << "\n";
+    std::cout << "\n";
+    std::cout << "\n";
+
+    writeBencode(encoded, output);
+  }
+
+  void handle_info(std::map<std::string, BencodeValuePtr> const &map, std::ostream &output)
+  {
+    auto id_it = map.find("id");
+    std::string id = "unknown";
+    if(id_it != map.end() && std::holds_alternative<std::string>(*id_it->second))
+    {
+      id = std::get<std::string>(*id_it->second);
+    }
+
+    std::string session = session_ids.empty() ? "unknown" : session_ids.back();
+
+    std::map<std::string, BencodeValuePtr> response;
+    response["id"] = std::make_shared<BencodeValue>(id);
+    response["session"] = std::make_shared<BencodeValue>(session);
+    response["status"] = std::make_shared<BencodeValue>(
+      std::vector<BencodeValuePtr>{ std::make_shared<BencodeValue>("done"),
+                                    std::make_shared<BencodeValue>("no-info") });
+
+    BencodeValuePtr encoded = std::make_shared<BencodeValue>(response);
+
+    std::cout << "Sending back: ";
+    printReadableBencode(encoded, std::cout);
+    std::cout << "\n";
+    std::cout << "\n";
+    std::cout << "\n";
+
+    writeBencode(encoded, output);
+  }
+
+  void handle_init_debugger(std::map<std::string, BencodeValuePtr> const &map, std::ostream &output)
+  {
+    auto id_it = map.find("id");
+    std::string id = "unknown";
+    if(id_it != map.end() && std::holds_alternative<std::string>(*id_it->second))
+    {
+      id = std::get<std::string>(*id_it->second);
+    }
+
+    std::string session = session_ids.empty() ? "unknown" : session_ids.back();
+
+    std::map<std::string, BencodeValuePtr> response;
+    response["id"] = std::make_shared<BencodeValue>(id);
+    response["session"] = std::make_shared<BencodeValue>(session);
+    response["status"] = std::make_shared<BencodeValue>(
+      std::vector<BencodeValuePtr>{ std::make_shared<BencodeValue>("done"),
+                                    std::make_shared<BencodeValue>("ok") });
+
+    BencodeValuePtr encoded = std::make_shared<BencodeValue>(response);
+
+    std::cout << "Sending back: ";
+    printReadableBencode(encoded, std::cout);
+    std::cout << "\n";
+    std::cout << "\n";
+    std::cout << "\n";
+
+    writeBencode(encoded, output);
+  }
+
   void handler(std::istream &input, std::ostream &output, boost::filesystem::path const &path)
   {
     BencodeValuePtr decoded = readBencode(input);
@@ -135,10 +223,23 @@ namespace jank
         {
           handle_clone(map, output);
         }
+        else if(op == "clojuredocs-refresh-cache")
+        {
+          handle_clojuredocs_refresh_cache(map, output);
+        }
+        else if(op == "info")
+        {
+          handle_info(map, output);
+        }
+        else if(op == "init-debugger")
+        {
+          handle_init_debugger(map, output);
+        }
         else
         {
           BencodeValuePtr encoded
-            = std::make_shared<BencodeValue>("only eval and clone keys are supported for now");
+            = std::make_shared<BencodeValue>("only eval, clone, clojuredocs-refresh-cache, info, "
+                                             "and init-debugger keys are supported for now");
           writeBencode(encoded, output);
         }
       }
