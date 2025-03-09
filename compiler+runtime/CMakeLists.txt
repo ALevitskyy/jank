@@ -266,6 +266,11 @@ add_library(
   src/cpp/clojure/string_native.cpp
   src/cpp/jank/compiler_native.cpp
   src/cpp/jank/perf_native.cpp
+
+  # NREPL sources.
+  src/cpp/jank/nrepl/bencode.cpp
+  src/cpp/jank/nrepl/server.cpp
+  src/cpp/jank/nrepl/logic.cpp
 )
 
 target_include_directories(

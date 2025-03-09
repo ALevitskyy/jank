@@ -34,6 +34,10 @@
 #include <clojure/core_native.hpp>
 #include <clojure/string_native.hpp>
 
+#include <jank/nrepl/bencode.hpp>
+#include <jank/nrepl/server.hpp>
+#include <jank/nrepl/logic.hpp>
+
 namespace jank
 {
   static void run(util::cli::options const &opts)
@@ -112,6 +116,94 @@ namespace jank
       __rt_ctx->load_module("/clojure.core", module::origin::latest).expect_ok();
     }
     __rt_ctx->compile_module(opts.target_ns).expect_ok();
+  }
+
+  std::string evaluate_code(std::string const &line, boost::filesystem::path const &path)
+  {
+    using namespace jank;
+    using namespace jank::runtime;
+
+    native_transient_string input{};
+
+    if(line.ends_with("\\"))
+    {
+      input.append(line.substr(0, line.size() - 1));
+      input.append("\n");
+    }
+    else
+    {
+      input += line;
+    }
+
+    util::scope_exit const finally{ [&] { boost::filesystem::remove(path); } };
+    try
+    {
+      {
+        std::ofstream ofs{ path.string() };
+        ofs << input;
+      }
+
+      auto const res(__rt_ctx->eval_file(path.c_str()));
+      return runtime::to_code_string(res);
+    }
+    catch(std::exception const &e)
+    {
+      return fmt::format("Exception: {}", e.what());
+    }
+    catch(jank::runtime::object_ptr const o)
+    {
+      return fmt::format("Exception: {}", jank::runtime::to_code_string(o));
+    }
+    catch(jank::native_persistent_string const &s)
+    {
+      return fmt::format("Exception: {}", s);
+    }
+    catch(jank::error_ptr const &e)
+    {
+      jank::error::report(e);
+      return "An error occurred";
+    }
+  }
+
+  static void nrepl(util::cli::options const &opts)
+  {
+    using namespace jank;
+    using namespace jank::runtime;
+
+    fmt::println("Here nREPL will reside");
+
+
+    {
+      profile::timer const timer{ "require clojure.core" };
+      __rt_ctx->load_module("/clojure.core", module::origin::latest).expect_ok();
+    }
+
+    if(!opts.target_module.empty())
+    {
+      profile::timer const timer{ "load main" };
+      __rt_ctx->load_module("/" + opts.target_module, module::origin::latest).expect_ok();
+      dynamic_call(__rt_ctx->in_ns_var->deref(), make_box<obj::symbol>(opts.target_module));
+    }
+
+    try
+    {
+      int port = 12345;
+      boost::asio::io_context io_context;
+
+      auto const tmp{ boost::filesystem::temp_directory_path() };
+      auto const path{ tmp / boost::filesystem::unique_path("jank-repl-%%%%.jank") };
+
+      evaluate_code("(ns user)", path);
+
+      server s(io_context,
+               port,
+               std::bind(handler, std::placeholders::_1, std::placeholders::_2, path));
+      io_context.run();
+    }
+    catch(std::exception &e)
+    {
+      std::cerr << "Exception: " << e.what() << "\n";
+    }
   }
 
   static void repl(util::cli::options const &opts)
@@ -335,6 +427,9 @@ try
       break;
     case util::cli::command::run_main:
       run_main(opts);
+      break;
+    case util::cli::command::nrepl:
+      nrepl(opts);
       break;
   }
 }
